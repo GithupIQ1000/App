@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng ký & Đăng nhập</title>
+</head>
+<body>
+  <h2>Đăng ký</h2>
+  <input id="regUser" placeholder="Tên đăng nhập">
+  <input id="regPass" type="password" placeholder="Mật khẩu">
+  <button onclick="register()">Đăng ký</button>
+
+  <h2>Đăng nhập</h2>
+  <input id="loginUser" placeholder="Tên đăng nhập">
+  <input id="loginPass" type="password" placeholder="Mật khẩu">
+  <button onclick="login()">Đăng nhập</button>
+
+  <p id="result"></p>
+
+  <script>
+    let db;
+    const request = indexedDB.open("MyAppDB", 1);
+
+    request.onupgradeneeded = function(e) {
+      db = e.target.result;
+      if (!db.objectStoreNames.contains("users")) {
+        db.createObjectStore("users", { keyPath: "username" });
+      }
+    };
+
+    request.onsuccess = function(e) {
+      db = e.target.result;
+    };
+
+    request.onerror = function(e) {
+      alert("Lỗi mở DB: " + e.target.errorCode);
+    };
+
+    function register() {
+      const user = document.getElementById("regUser").value;
+      const pass = document.getElementById("regPass").value;
+
+      const tx = db.transaction("users", "readwrite");
+      const store = tx.objectStore("users");
+
+      store.put({ username: user, password: pass });
+
+      tx.oncomplete = () => {
+        document.getElementById("result").innerText = "Đăng ký thành công!";
+      };
+    }
+
+    function login() {
+      const user = document.getElementById("loginUser").value;
+      const pass = document.getElementById("loginPass").value;
+
+      const tx = db.transaction("users", "readonly");
+      const store = tx.objectStore("users");
+
+      const req = store.get(user);
+      req.onsuccess = () => {
+        if (req.result && req.result.password === pass) {
+          document.getElementById("result").innerText = "Đăng nhập thành công!";
+        } else {
+          document.getElementById("result").innerText = "Sai tên hoặc mật khẩu.";
+        }
+      };
+    }
+  </script>
+</body>
+</html>
