@@ -1,71 +1,552 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8">
-  <title>Đăng ký & Đăng nhập</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vocabulary App (Offline SPA)</title>
+
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: sans-serif;
+        background: #fff;
+        color: #000;
+    }
+
+    /* Ẩn toàn bộ page */
+    .page {
+        display: none;
+        padding: 20px;
+    }
+    .page.active {
+        display: block;
+    }
+
+    /* Header chung cho tất cả trang con */
+    .header {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px;
+        box-sizing: border-box;
+        border-bottom: 1px solid #000;
+    }
+
+    .header button {
+        background: none;
+        border: 1px solid #000;
+        padding: 5px 10px;
+        font-size: 16px;
+    }
+
+    /* Form tối giản */
+    input, button, select {
+        border: 1px solid #000;
+        padding: 8px;
+        font-size: 18px;
+        background: #fff;
+        color: #000;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    /* Center layout cho Login / Register */
+    .center-box {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 300px;
+        margin: auto;
+        margin-top: 10vh;
+    }
+
+    /* Menu chính */
+    .menu-list {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        font-size: 22px;
+        margin-top: 20vh;
+        text-align: center;
+    }
+
+    .menu-list button {
+        font-size: 20px;
+        padding: 10px;
+    }
+
+    /* Responsive nhỏ */
+    @media (max-width: 600px) {
+        input, button {
+            font-size: 16px;
+        }
+
+        .header button {
+            font-size: 14px;
+        }
+    }
+</style>
 </head>
 <body>
-  <h2>Đăng ký</h2>
-  <input id="regUser" placeholder="Tên đăng nhập">
-  <input id="regPass" type="password" placeholder="Mật khẩu">
-  <button onclick="register()">Đăng ký</button>
 
-  <h2>Đăng nhập</h2>
-  <input id="loginUser" placeholder="Tên đăng nhập">
-  <input id="loginPass" type="password" placeholder="Mật khẩu">
-  <button onclick="login()">Đăng nhập</button>
+<!-- ====================================================== -->
+<!-- PAGE: LOGIN / REGISTER -->
+<!-- ====================================================== -->
+<div id="page-login" class="page active">
 
-  <p id="result"></p>
+    <div class="center-box">
+        <h2>Đăng nhập</h2>
+        <input id="login-username" placeholder="Tên đăng nhập">
+        <input id="login-password" type="password" placeholder="Mật khẩu">
+        <button onclick="login()">Đăng nhập</button>
 
-  <script>
-    let db;
-    const request = indexedDB.open("MyAppDB", 1);
+        <hr>
 
-    request.onupgradeneeded = function(e) {
-      db = e.target.result;
-      if (!db.objectStoreNames.contains("users")) {
-        db.createObjectStore("users", { keyPath: "username" });
-      }
-    };
+        <h3>Đăng ký</h3>
+        <input id="reg-nickname" placeholder="Biệt danh (tuỳ chọn)">
+        <input id="reg-username" placeholder="Tên đăng nhập">
+        <input id="reg-password" type="password" placeholder="Mật khẩu">
+        <button onclick="register()">Đăng ký</button>
 
-    request.onsuccess = function(e) {
-      db = e.target.result;
-    };
+        <div id="login-msg"></div>
+    </div>
 
-    request.onerror = function(e) {
-      alert("Lỗi mở DB: " + e.target.errorCode);
-    };
+</div>
 
-    function register() {
-      const user = document.getElementById("regUser").value;
-      const pass = document.getElementById("regPass").value;
+<!-- ====================================================== -->
+<!-- PAGE: MENU CHÍNH -->
+<!-- ====================================================== -->
+<div id="page-menu" class="page">
 
-      const tx = db.transaction("users", "readwrite");
-      const store = tx.objectStore("users");
+    <div class="menu-list">
+        <button onclick="go('page-create')">Tạo từ mới</button>
+        <button onclick="go('page-read')">Đọc từ</button>
+        <button onclick="go('page-speak')">Nói từ</button>
+        <button onclick="openSetting()">Cài đặt</button>
+        <button onclick="logout()">Đăng xuất</button>
+    </div>
 
-      store.put({ username: user, password: pass });
+</div>
 
-      tx.oncomplete = () => {
-        document.getElementById("result").innerText = "Đăng ký thành công!";
-      };
+<!-- ====================================================== -->
+<!-- PAGE: CREATE NEW WORD -->
+<!-- ====================================================== -->
+<div id="page-create" class="page">
+    <div class="header">
+        <button onclick="go('page-menu')">Home</button>
+        <button onclick="openSetting()">Setting</button>
+    </div>
+
+    <h2>Tạo từ mới</h2>
+
+    <div class="center-box">
+        <input id="new-word" placeholder="Từ mới">
+        <input id="new-type" placeholder="Loại">
+        <input id="new-mean" placeholder="Nghĩa">
+        <button onclick="createWord()">Tạo</button>
+        <div id="create-msg"></div>
+    </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- PAGE: READ WORD -->
+<!-- ====================================================== -->
+<div id="page-read" class="page">
+    <div class="header">
+        <button onclick="go('page-menu')">Home</button>
+        <button onclick="openSetting()">Setting</button>
+    </div>
+
+    <h2>Đọc từ</h2>
+
+    <div style="text-align:center; margin-top:30px;">
+        <button onclick="startMode('reading')">Bắt đầu học Reading</button>
+        <div id="learning-word" style="margin-top:20px"></div>
+
+        <button onclick="rateWord(true)">OK</button>
+        <button onclick="rateWord(false)">Forget</button>
+    </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- PAGE: SPEAK WORD -->
+<!-- ====================================================== -->
+<div id="page-speak" class="page">
+    <div class="header">
+        <button onclick="go('page-menu')">Home</button>
+        <button onclick="openSetting()">Setting</button>
+    </div>
+
+    <h2>Nói từ</h2>
+
+    <div style="text-align:center; margin-top:30px;">
+        <button onclick="startMode('speaking')">Bắt đầu Speaking</button>
+        <div id="learning-word" style="margin-top:20px"></div>
+
+        <button onclick="rateWord(true)">OK</button>
+        <button onclick="rateWord(false)">Forget</button>
+    </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- MODAL SETTING -->
+<!-- ====================================================== -->
+<div id="modal-setting" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.5);
+">
+    <div style="
+        background:#fff;
+        color:#000;
+        border:1px solid #000;
+        padding:20px;
+        width:300px;
+        margin:10% auto;
+    ">
+        <h3>Cài đặt</h3>
+
+        <label>Jump Word</label>
+        <input id="set-jump-word">
+
+        <label>Jump Reading</label>
+        <input id="set-jump-reading">
+
+        <label>Jump Speaking</label>
+        <input id="set-jump-speaking">
+
+        <label>Nx Point</label>
+        <input id="set-nx">
+
+        <button onclick="saveSetting()">Lưu</button>
+        <button onclick="closeSetting()">Đóng</button>
+    </div>
+</div>
+
+<!-- ====================================================== -->
+<!-- JAVASCRIPT (PART 1 – chỉ điều hướng và UI) -->
+<!-- ====================================================== -->
+<script>
+
+// ===========================
+// 1. HÀM TẢI DATABASE
+// ===========================
+function loadDB() {
+    let db = localStorage.getItem("vocabApp");
+
+    if (!db) {
+        const defaultDB = {
+            currentUser: null,
+            users: {}
+        };
+        localStorage.setItem("vocabApp", JSON.stringify(defaultDB));
+        return defaultDB;
+    }
+    return JSON.parse(db);
+}
+
+// ===========================
+// 2. LƯU DATABASE
+// ===========================
+function saveDB(db) {
+    localStorage.setItem("vocabApp", JSON.stringify(db));
+}
+
+// ===========================
+// 3. HỖ TRỢ LẤY USER HIỆN TẠI
+// ===========================
+function getCurrentUser() {
+    const db = loadDB();
+    if (!db.currentUser) return null;
+    return db.users[db.currentUser];
+}
+
+// ===========================
+// 4. ĐĂNG KÝ USER
+// ===========================
+function register() {
+    const nickname = document.getElementById("reg-nickname").value.trim();
+    const username = document.getElementById("reg-username").value.trim();
+    const password = document.getElementById("reg-password").value.trim();
+
+    if (!username || !password) {
+        alert("Vui lòng nhập username và password!");
+        return;
     }
 
-    function login() {
-      const user = document.getElementById("loginUser").value;
-      const pass = document.getElementById("loginPass").value;
+    const db = loadDB();
 
-      const tx = db.transaction("users", "readonly");
-      const store = tx.objectStore("users");
-
-      const req = store.get(user);
-      req.onsuccess = () => {
-        if (req.result && req.result.password === pass) {
-          document.getElementById("result").innerText = "Đăng nhập thành công!";
-        } else {
-          document.getElementById("result").innerText = "Sai tên hoặc mật khẩu.";
-        }
-      };
+    if (db.users[username]) {
+        alert("Tên đăng nhập đã tồn tại!");
+        return;
     }
-  </script>
+
+    db.users[username] = {
+        password: password,
+        nickname: nickname || username,
+        settings: {
+            jump_word: 1.2,
+            jump_reading: 1.0,
+            jump_speaking: 1.0,
+            nx: 1.5
+        },
+        words: []
+    };
+
+    saveDB(db);
+
+    alert("Đăng ký thành công! Hãy đăng nhập.");
+}
+
+// ===========================
+// 5. ĐĂNG NHẬP
+// ===========================
+function login() {
+    const username = document.getElementById("login-username").value.trim();
+    const password = document.getElementById("login-password").value.trim();
+
+    const db = loadDB();
+
+    if (!db.users[username]) {
+        alert("Không tồn tại user!");
+        return;
+    }
+
+    if (db.users[username].password !== password) {
+        alert("Sai mật khẩu!");
+        return;
+    }
+
+    db.currentUser = username;
+
+    saveDB(db);
+
+    go("page-menu");
+}
+
+// ===========================
+// 6. LOGOUT
+// ===========================
+function logout() {
+    const db = loadDB();
+    db.currentUser = null;
+    saveDB(db);
+    go("page-login");
+}
+
+// ===========================
+// 7. MỞ SETTING → LOAD DATA
+// ===========================
+function openSetting() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    document.getElementById("set-jump-word").value = user.settings.jump_word;
+    document.getElementById("set-jump-reading").value = user.settings.jump_reading;
+    document.getElementById("set-jump-speaking").value = user.settings.jump_speaking;
+    document.getElementById("set-nx").value = user.settings.nx;
+
+    document.getElementById("modal-setting").style.display = "block";
+}
+
+function closeSetting() {
+    document.getElementById("modal-setting").style.display = "none";
+}
+
+// ===========================
+// 8. LƯU CÀI ĐẶT
+// ===========================
+function saveSetting() {
+    const db = loadDB();
+    const user = getCurrentUser();
+
+    user.settings.jump_word = Number(document.getElementById("set-jump-word").value);
+    user.settings.jump_reading = Number(document.getElementById("set-jump-reading").value);
+    user.settings.jump_speaking = Number(document.getElementById("set-jump-speaking").value);
+    user.settings.nx = Number(document.getElementById("set-nx").value);
+
+    saveDB(db);
+
+    alert("Đã lưu cài đặt");
+}
+
+// ===========================
+// 9. NAVIGATION SPA
+// ===========================
+function go(page) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById(page).classList.add('active');
+}
+
+
+
+// ========================================
+// 10. TẠO TỪ MỚI
+// ========================================
+function createWord() {
+    const user = getCurrentUser();
+    if (!user) return;
+
+    const w = document.getElementById("new-word").value.trim();
+    const m = document.getElementById("new-mean").value.trim();
+    const t = document.getElementById("new-type").value.trim();
+
+    if (!w || !m) {
+        alert("Nhập từ và nghĩa!");
+        return;
+    }
+
+    user.words.push({
+        word: w,
+        mean: m,
+        type: t,
+
+        sum_reading: 0,
+        sum_speaking: 0,
+
+        next_reading: 0,
+        next_speaking: 0,
+
+        status_reading: 1,
+        status_speaking: 1
+    });
+
+    saveDB(loadDB());
+
+    document.getElementById("create-msg").innerText = "✔️ Đã thêm từ mới!";
+    setTimeout(() => document.getElementById("create-msg").innerText = "", 2000);
+
+    document.getElementById("new-word").value = "";
+    document.getElementById("new-mean").value = "";
+    document.getElementById("new-type").value = "";
+}
+
+
+
+// ========================================
+// 11. LẤY TỪ CẦN HỌC THEO NGÀY
+// ========================================
+function getDailyWords(mode) {
+    const user = getCurrentUser();
+    if (!user) return [];
+
+    const now = Date.now();
+    return user.words.filter(w => {
+        if (mode === "reading") return w.next_reading <= now;
+        if (mode === "speaking") return w.next_speaking <= now;
+        return false;
+    });
+}
+
+
+
+// ========================================
+// 12. HIỆN TỪ (READING / SPEAKING)
+// ========================================
+let currentList = [];
+let currentIndex = 0;
+let currentMode = null;
+
+function startMode(mode) {
+    currentMode = mode;
+    currentList = getDailyWords(mode);
+    currentIndex = 0;
+
+    if (currentList.length === 0) {
+        document.getElementById("learning-word").innerHTML = "Không có từ để học";
+        return;
+    }
+
+    showCurrentWord();
+}
+
+function showCurrentWord() {
+    if (currentList.length === 0) return;
+
+    const w = currentList[currentIndex];
+
+    document.getElementById("learning-word").innerHTML = `
+        <div><b>Từ:</b> ${w.word}</div>
+        <div><b>Nghĩa:</b> ${w.mean}</div>
+        <div><b>Loại:</b> ${w.type}</div>
+        <div style="margin-top:15px;font-size:14px;color:#888">(${currentIndex + 1}/${currentList.length})</div>
+    `;
+}
+
+
+
+// ========================================
+// 13. LOGIC OK / FORGET (converted from PHP)
+// ========================================
+function rateWord(isOk) {
+    const user = getCurrentUser();
+    const settings = user.settings;
+
+    const w = currentList[currentIndex];
+
+    let sum, next, status;
+    let jump, nx;
+
+    if (currentMode === "reading") {
+        sum = w.sum_reading;
+        next = w.next_reading;
+        status = w.status_reading;
+
+        jump = settings.jump_reading;
+        nx = settings.nx;
+    } else {
+        sum = w.sum_speaking;
+        next = w.next_speaking;
+        status = w.status_speaking;
+
+        jump = settings.jump_speaking;
+        nx = settings.nx;
+    }
+
+    if (isOk) {
+        sum += jump;
+        sum *= nx;
+        if (sum > 365) sum = 365; // giới hạn 1 năm
+        next = Date.now() + sum * 24 * 60 * 60 * 1000;
+        status = 1;
+    } else {
+        sum -= jump;
+        if (sum < 0) sum = 0;
+        sum /= nx;
+        next = Date.now();
+        status = 0;
+    }
+
+    // Cập nhật vào từ
+    if (currentMode === "reading") {
+        w.sum_reading = sum;
+        w.next_reading = next;
+        w.status_reading = status;
+    } else {
+        w.sum_speaking = sum;
+        w.next_speaking = next;
+        w.status_speaking = status;
+    }
+
+    // Lưu
+    saveDB(loadDB());
+
+    // Chuyển sang từ tiếp theo
+    currentIndex++;
+    if (currentIndex >= currentList.length) {
+        document.getElementById("learning-word").innerHTML =
+            "Hôm nay đã học hết!";
+        return;
+    }
+
+    showCurrentWord();
+}
+
+</script>
+
 </body>
 </html>
